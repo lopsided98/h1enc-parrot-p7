@@ -1,0 +1,7 @@
+*.o
+*.a
+*.so
+.cache/
+compile_commands.json
+tags
+linux_reference/test/h264/h264_testenc
