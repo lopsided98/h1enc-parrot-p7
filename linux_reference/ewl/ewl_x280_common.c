@@ -56,8 +56,6 @@
 #include <linux/mxc_ion.h>
 #include <ion_4.12.h>
 #endif
-#else
-#include "memalloc.h"
 #endif
 
 #include <sys/syscall.h>
