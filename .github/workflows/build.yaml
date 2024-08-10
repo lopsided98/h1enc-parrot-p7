@@ -15,9 +15,7 @@ jobs:
           name: ardupilot
           signingKey: '${{ secrets.CACHIX_SIGNING_KEY }}'
       - run: nix build
-      - name: Get result Nix store path
-        run: echo "result=$(readlink result)" >> $GITHUB_ENV
       - uses: actions/upload-artifact@v4
         with:
           name: ${{ matrix.package }}
-          path: ${{ env.result }}
+          path: result-bin
