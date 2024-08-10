@@ -17,5 +17,5 @@ jobs:
       - run: nix build
       - uses: actions/upload-artifact@v4
         with:
-          name: ${{ matrix.package }}
+          name: h1enc
           path: result-bin
