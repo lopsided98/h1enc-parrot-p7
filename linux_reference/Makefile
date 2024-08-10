@@ -184,7 +184,7 @@ ifeq ($(SEARCH_AREA_SMALL),1)
     CFLAGS+=-DSEARCH_AREA_SMALL
 endif
 
-GCC_GTEQ_435 := $(shell expr `gcc -dumpversion | sed -e 's/\.\([0-9][0-9]\)/\1/g' -e 's/\.\([0-9]\)/0\1/g' -e 's/^[0-9]\{3,4\}$$/&00/'` \>= 40305)
+GCC_GTEQ_435 = $(shell expr `$(CC) -dumpversion | sed -e 's/\.\([0-9][0-9]\)/\1/g' -e 's/\.\([0-9]\)/0\1/g' -e 's/^[0-9]\{3,4\}$$/&00/'` \>= 40305)
 ifeq "$(GCC_GTEQ_435)" "1"
     CFLAGS += -Wempty-body -Wtype-limits
 endif
