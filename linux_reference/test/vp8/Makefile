@@ -44,7 +44,7 @@
 USE_64BIT_ENV=y
 
 # Include API extension and test ID for Hantro internal testing
-INCLUDE_TESTING = y
+#INCLUDE_TESTING = y
 
 # Add your debugging flag (or not) to CFLAGS
 ifeq ($(DEBUG),y)

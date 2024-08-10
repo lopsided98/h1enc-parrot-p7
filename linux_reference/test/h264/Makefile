@@ -44,7 +44,7 @@
 USE_64BIT_ENV=y
 
 # Include API extension and test ID for Hantro internal testing
-INCLUDE_TESTING = y
+#INCLUDE_TESTING = y
 
 # Set PCIE FPGA Verification env
 ifeq (pcie,$(findstring pcie, $(MAKECMDGOALS)))

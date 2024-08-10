@@ -48,7 +48,7 @@ INCLUDE_VIDSTAB = y
 USE_64BIT_ENV=y
 
 # Include internal testing with testId-parameter
-INCLUDE_TESTING = y
+#INCLUDE_TESTING = y
 ifneq (,$(findstring testdata,$(MAKECMDGOALS)))
 INCLUDE_TESTING = y
 endif
