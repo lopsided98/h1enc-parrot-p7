@@ -252,16 +252,6 @@ system_cov: TARGETENV = system_cov
 system_cov: $(MODELLIB) $(LIB) $(OBJS)
 	$(CC) $(CFLAGS) $(OBJS) $(LIB) $(MODELLIB) -o $(TARGET)
 
-.PHONY: nxp_m845s
-nxp_m845s: TARGETENV = nxp_m845s
-nxp_m845s: CROSS_COMPILE = aarch64-linux-gnu-
-nxp_m845s: ARCH = -march=armv8-a
-nxp_m845s: LIB += -lpthread
-nxp_m845s: $(OBJS)
-	$(MAKE) -w -C ../.. $@ INCLUDE_JPEG=n INCLUDE_VIDSTAB=y \
-            CROSS_COMPILE=$(CROSS_COMPILE) ARCH="$(ARCH)"
-	$(CC) $(CFLAGS) $(OBJS) $(LIB) -o $(TARGET) 
-	
 .PHONY: clean
 clean:
 	$(RM) *.o core* *~ $(TARGET) $(TARGET).* .depend

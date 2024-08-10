@@ -51,6 +51,7 @@
 #include <signal.h>
 #include <unistd.h>
 #include <fcntl.h>
+#include <poll.h>
 
 #include <errno.h>
 
@@ -94,8 +95,7 @@ extern volatile u32 asic_status;
 i32 EWLWaitHwRdy(const void *inst, u32 *slicesReady)
 {
     hx280ewl_t *enc = (hx280ewl_t *) inst;
-    i32 ret = EWL_HW_WAIT_OK;
-    //u32 prevSlicesReady = 0;
+    i32 ret;
     u32 temp;
 
     PTRACE("EWLWaitHw: Start\n");
@@ -107,24 +107,39 @@ i32 EWLWaitHwRdy(const void *inst, u32 *slicesReady)
         return EWL_HW_WAIT_ERROR;
     }
 
-#ifdef EWL_NO_HW_TIMEOUT
-    if ((ret = ioctl(enc->fd_enc, HX280ENC_IOCG_CORE_WAIT, &temp))==-1)
-    {
-        PTRACE("ioctl HX280ENC_IOCG_CORE_WAIT failed\n");
-        ret = EWL_HW_WAIT_ERROR;
-        goto out;
-    }
+    while (true) {
+        do {
+            ret = read(enc->fd_enc, &temp, sizeof(temp));
+        } while (ret < 0 && errno == EINTR);
+        if (ret < 0 && errno != EAGAIN) {
+            PTRACE("read failed\n");
+            ret = EWL_HW_WAIT_ERROR;
+            break;
+        } else if (ret == sizeof(temp)) {
+            ret = EWL_HW_WAIT_OK;
+            PTRACE("EWLWaitHw: OK!\n");
+            break;
+        }
 
-#else
-#error Timeout not implemented!
-#endif
+        struct pollfd pfds = {
+            .fd = enc->fd_enc,
+            .events = POLLIN,
+        };
+        do {
+            ret = poll(&pfds, 1, -1);
+        } while (ret < 0 && errno == EINTR);
+        if (ret < 0) {
+            PTRACE("poll failed\n");
+            ret = EWL_HW_WAIT_ERROR;
+            break;
+        }
+    }
 
     if (slicesReady)
        *slicesReady = (enc->pRegBase[21] >> 16) & 0xFF;
-    PTRACE("EWLWaitHw: asic_status = %x\n", asic_status);
-out:
-    asic_status = enc->pRegBase[1]; /* update the buffered asic status */
-    PTRACE("EWLWaitHw: OK!\n");
 
-    return EWL_OK;
+    asic_status = enc->pRegBase[1]; /* update the buffered asic status */
+    PTRACE("EWLWaitHw: asic_status = %x\n", asic_status);
+
+    return ret;
 }

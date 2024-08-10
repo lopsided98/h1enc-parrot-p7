@@ -42,8 +42,8 @@
 # Comment/uncomment the following lines to define which control codes to
 # include in the library build
 INCLUDE_H264 = y
-INCLUDE_VP8 = y
-INCLUDE_JPEG = y
+#INCLUDE_VP8 = y
+#INCLUDE_JPEG = y
 INCLUDE_VIDSTAB = y
 USE_64BIT_ENV=y
 
@@ -410,13 +410,13 @@ pcie: $(ENCLIB)
 system_cov: CC = covc --retain -t!debug_trace/enctrace.c,!debug_trace/enctracestream.c g++
 system_cov: $(ENCLIB)
 
-nxp_m845s: ENVSET  = -DSDRAM_LM_BASE=0x80000000 \
-                     -DENC_MODULE_PATH=\"/tmp/dev/hx280\" \
-                     -DMEMALLOC_MODULE_PATH=\"/tmp/dev/memalloc\"
-nxp_m845s: ENVSET  += -DEWL_NO_HW_TIMEOUT                   
-nxp_m845s: CROSS_COMPILE = aarch64-linux-gnu-
-nxp_m845s: ARCH = -march=armv8-a
-nxp_m845s: $(ENCLIB)
+.PHONY: parrot_p7
+parrot_p7: ENVSET  = -DENC_MODULE_PATH=\"/dev/hx280a\"
+parrot_p7: ENVSET  += -DEWL_NO_HW_TIMEOUT
+parrot_p7: ENVSET  += -DUSE_SYS_V_IPC
+parrot_p7: CROSS_COMPILE = armv7l-unknown-linux-musleabihf-
+parrot_p7: ARCH = -march=armv7-a+mp+sec+neon-fp16 -mtune=cortex-a9
+parrot_p7: $(ENCLIB)
 
 
 $(ENCLIB): $(OBJS)

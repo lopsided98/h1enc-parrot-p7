@@ -276,12 +276,13 @@ system_cov: TARGETENV = system_cov
 system_cov: $(MODELLIB) $(LIB) $(OBJS)
 	$(CC) $(CFLAGS) $(OBJS) $(LIB) $(MODELLIB) -o $(TARGET)
 
-.PHONY: nxp_m845s
-nxp_m845s: TARGETENV = nxp_m845s
-nxp_m845s: CROSS_COMPILE = aarch64-linux-gnu-
-nxp_m845s: ARCH = -march=armv8-a
-nxp_m845s: LIB += -lpthread
-nxp_m845s: $(OBJS)
+
+.PHONY: parrot_p7
+parrot_p7: TARGETENV = parrot_p7
+parrot_p7: CROSS_COMPILE = armv7l-unknown-linux-musleabihf-
+parrot_p7: ARCH = -march=armv7-a+mp+sec+neon-fp16 -mtune=cortex-a9
+parrot_p7: LIB += -lpthread
+parrot_p7: $(OBJS)
 	$(MAKE) -w -C ../.. $@ INCLUDE_JPEG=n INCLUDE_VIDSTAB=y \
             USE_EFENCE=$(USE_EFENCE) CROSS_COMPILE=$(CROSS_COMPILE) ARCH="$(ARCH)"
 	$(CC) $(CFLAGS) $(OBJS) $(LIB) $(EFENCE) -o $(TARGET) 

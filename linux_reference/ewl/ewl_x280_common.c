@@ -168,17 +168,15 @@ static void EWLPcieFpgaVerificationRelease(hx280ewl_t *enc)
 
 int MapAsicRegisters(hx280ewl_t * ewl)
 {
-    unsigned long base;
-    unsigned int size;
+    size_t size;
     u32 *pRegs;
 
-    ioctl(ewl->fd_enc, HX280ENC_IOCGHWOFFSET, &base);
-    ioctl(ewl->fd_enc, HX280ENC_IOCGHWIOSIZE, &size);
+    size = getpagesize();
 
     /* map hw registers to user space */
     pRegs =
         (u32 *) mmap(0, size, PROT_READ | PROT_WRITE, MAP_SHARED,
-                     ewl->fd_enc, base);
+                     ewl->fd_enc, 0);
     if(pRegs == MAP_FAILED)
     {
         PTRACE("EWLInit: Failed to mmap regs\n");
@@ -186,7 +184,6 @@ int MapAsicRegisters(hx280ewl_t * ewl)
     }
 
     ewl->regSize = size;
-    ewl->regBase = base;
     ewl->pRegBase = pRegs;
 
     return 0;
@@ -203,8 +200,7 @@ u32 EWLReadAsicID()
     u32 id = ~0;
     //int fd_mem = -1;
     int fd_enc = -1;
-    unsigned long base = ~0;
-    unsigned int size;
+    size_t size;
     u32 *pRegs = MAP_FAILED;
 
     EWLHwConfig_t cfg_info;
@@ -223,18 +219,18 @@ u32 EWLReadAsicID()
     //    goto end;
     //}
 
-    fd_enc = open(ENC_MODULE_PATH, O_RDONLY);
+    /* Must be opened in read/write mode or mmap fails */
+    fd_enc = open(ENC_MODULE_PATH, O_RDWR);
     if(fd_enc == -1)
     {
         PTRACE("EWLReadAsicID: failed to open: %s\n", ENC_MODULE_PATH);
         goto end;
     }
 
-    ioctl(fd_enc, HX280ENC_IOCGHWOFFSET, &base);
-    ioctl(fd_enc, HX280ENC_IOCGHWIOSIZE, &size);
+    size = getpagesize();
 
     /* map hw registers to user space */
-    pRegs = (u32 *) mmap(0, size, PROT_READ, MAP_SHARED, fd_enc, base);
+    pRegs = (u32 *) mmap(NULL, size, PROT_READ, MAP_SHARED, fd_enc, 0);
 
     if(pRegs == MAP_FAILED)
     {
@@ -252,7 +248,7 @@ u32 EWLReadAsicID()
     if(fd_enc != -1)
         close(fd_enc);
 
-    PTRACE("EWLReadAsicID: 0x%08x at 0x%08lx\n", id, base);
+    PTRACE("EWLReadAsicID: 0x%08x\n", id);
 
     return id;
 }
@@ -267,8 +263,7 @@ EWLHwConfig_t EWLReadAsicConfig(void)
 {
     //int fd_mem = -1;
     int fd_enc = -1;
-    unsigned long base;
-    unsigned int size;
+    size_t size;
     u32 *pRegs = MAP_FAILED, cfgval;
 
     EWLHwConfig_t cfg_info;
@@ -282,18 +277,18 @@ EWLHwConfig_t EWLReadAsicConfig(void)
     //    goto end;
     //}
 
-    fd_enc = open(ENC_MODULE_PATH, O_RDONLY);
+    /* Must be opened in read/write mode or mmap fails */
+    fd_enc = open(ENC_MODULE_PATH, O_RDWR);
     if(fd_enc == -1)
     {
         PTRACE("EWLReadAsicConfig: failed to open: %s\n", ENC_MODULE_PATH);
         goto end;
     }
 
-    ioctl(fd_enc, HX280ENC_IOCGHWOFFSET, &base);
-    ioctl(fd_enc, HX280ENC_IOCGHWIOSIZE, &size);
+    size = getpagesize();
 
     /* map hw registers to user space */
-    pRegs = (u32 *) mmap(0, size, PROT_READ, MAP_SHARED, fd_enc, base);
+    pRegs = (u32 *) mmap(0, size, PROT_READ, MAP_SHARED, fd_enc, 0);
 
     if(pRegs == MAP_FAILED)
     {
@@ -382,6 +377,8 @@ EWLHwConfig_t EWLReadAsicConfig(void)
 const void *EWLInit(EWLInitParam_t * param)
 {
     hx280ewl_t *enc = NULL;
+    int ret;
+    u32 command = 1;
 
 
     PTRACE("EWLInit: Start\n");
@@ -403,7 +400,7 @@ const void *EWLInit(EWLInitParam_t * param)
     memset(enc, 0, sizeof(hx280ewl_t));
 
     enc->clientType = param->clientType;
-    enc->fd_mem = enc->fd_enc = enc->fd_memalloc = -1;
+    enc->fd_mem = enc->fd_enc = enc->fd_memalloc = enc->semid = -1;
 
     /* New instance allocated */
     //enc->fd_mem = open("/dev/mem", O_RDWR | O_SYNC);
@@ -419,11 +416,12 @@ const void *EWLInit(EWLInitParam_t * param)
         PTRACE("EWLInit: failed to open: %s\n", ENC_MODULE_PATH);
         goto err;
     }
- 		
-    enc->fd_memalloc = open(MEMALLOC_MODULE_PATH, O_RDWR);
-    if(enc->fd_memalloc == -1)
+
+    /* setup interrupt in kernel driver */
+    ret = write(enc->fd_enc, &command, sizeof(command));
+    if (ret != sizeof(command))
     {
-        PTRACE("EWLInit: failed to open: %s\n", MEMALLOC_MODULE_PATH);
+        PTRACE("EWLInit: interrupt setup failed\n");
         goto err;
     }
 
@@ -432,6 +430,20 @@ const void *EWLInit(EWLInitParam_t * param)
     {
         goto err;
     }
+
+    enc->semid = binary_semaphore_allocation(0x8070, 2, S_IWOTH);
+    if (enc->semid == -1 && errno != ENOENT)
+    {
+        goto err;
+    }
+
+    enc->semid = binary_semaphore_allocation(0x8070, 2, IPC_CREAT | S_IWOTH);
+    if (enc->semid == -1)
+    {
+        goto err;
+    }
+    binary_semaphore_initialize(enc->semid, 0);
+    binary_semaphore_initialize(enc->semid, 1);
 
 #ifdef PCIE_FPGA_VERIFICATION
     if (EWLPcieFpgaVerificationInit(enc) != EWL_OK)
@@ -482,6 +494,8 @@ i32 EWLRelease(const void *inst)
         close(enc->fd_enc);
     if(enc->fd_memalloc != -1)
         close(enc->fd_memalloc);
+    if(enc->semid != -1)
+        binary_semaphore_deallocate(enc->semid);
 
     EWLfree(enc);
 
@@ -855,7 +869,35 @@ i32 EWLMallocLinear(const void *instance, u32 size, EWLLinearMem_t * info)
 
 #else //USE_ION
 
-//non-ION not supported
+#define HX_DMA_PGNO_MAGIC (0xfffff000)
+
+i32 EWLMallocLinear(const void *instance, u32 size, EWLLinearMem_t * info)
+{
+    hx280ewl_t *enc_ewl = (hx280ewl_t *) instance;
+    EWLLinearMem_t *buff = (EWLLinearMem_t *) info;
+
+    u32 pgsize = getpagesize();
+
+    assert(enc_ewl != NULL);
+    assert(buff != NULL);
+
+    PTRACE("EWLMallocLinear\t%8d bytes\n", size);
+
+    buff->size = (size + (pgsize - 1)) & (~(pgsize - 1));
+    buff->virtualAddress = mmap(NULL, buff->size, PROT_READ | PROT_WRITE,
+                                MAP_SHARED, enc_ewl->fd_enc, HX_DMA_PGNO_MAGIC);
+    if (buff->virtualAddress == MAP_FAILED)
+    {
+        PTRACE("EWLMallocLinear: mmap failed: %s\n", strerror(errno));
+        return EWL_ERROR;
+    }
+
+    // Kernel module stores physical address at start of allocated region
+    buff->busAddress = *buff->virtualAddress;
+    *buff->virtualAddress = 0;
+
+    return EWL_OK;
+}
 
 #endif  //USE_ION
 
@@ -877,17 +919,6 @@ void EWLFreeLinear(const void *instance, EWLLinearMem_t * info)
     assert(enc_ewl != NULL);
     assert(buff != NULL);
 
-#ifdef USE_ION
-    if (buff->ion_fd >= 0)
-        close(buff->ion_fd);
-#else
-    if(buff->busAddress != 0)
-    {
-        buff->busAddress = BUS_ASIC_TO_CPU(buff->busAddress);
-        ioctl(enc_ewl->fd_memalloc, MEMALLOC_IOCSFREEBUFFER, &buff->busAddress);
-	}
-#endif
-
     if(buff->virtualAddress != MAP_FAILED)
         munmap(buff->virtualAddress, buff->size);
 
@@ -901,27 +932,29 @@ void EWLFreeLinear(const void *instance, EWLLinearMem_t * info)
 i32 EWLReserveHw(const void *inst)
 {
     hx280ewl_t *ewl = (hx280ewl_t *) inst;
-    i32 ret;
-    u32 temp = 0;
+    int ret;
     
     /* Check invalid parameters */
     if(ewl == NULL)
       return EWL_ERROR;
     
     PTRACE("EWLReserveHw: PID %d trying to reserve ...\n", getpid());
-    
-    ret = ioctl(ewl->fd_enc, HX280ENC_IOCH_ENC_RESERVE, &temp);
-    
-    if (ret < 0)
-    {
-     PTRACE("EWLReserveHw failed\n");
-     return EWL_ERROR;
+
+    ret = binary_semaphore_wait(ewl->semid, 0);
+    if (ret != 0) {
+        return EWL_ERROR;
     }
-    else
-    {
-     PTRACE("EWLReserveHw successed\n");
+
+    ret = binary_semaphore_wait(ewl->semid, 1);
+    if (ret != 0) {
+        ret = binary_semaphore_post(ewl->semid, 0);
+        if (ret != 0) {
+            assert(0);
+        }
+
+        return EWL_ERROR;
     }
-    
+
     EWLWriteReg(ewl, 0x38, 0);//disable encoder
     
     PTRACE("EWLReserveHw: ENC HW locked by PID %d\n", getpid());
@@ -936,7 +969,8 @@ i32 EWLReserveHw(const void *inst)
 void EWLReleaseHw(const void *inst)
 {
     hx280ewl_t *enc = (hx280ewl_t *) inst;
-    u32 val, temp;
+    u32 val;
+    int ret;
 
     assert(enc != NULL);
 
@@ -945,10 +979,19 @@ void EWLReleaseHw(const void *inst)
 
     PTRACE("EWLReleaseHw: PID %d trying to release ...\n", getpid());
 
-    ioctl(enc->fd_enc, HX280ENC_IOCH_ENC_RELEASE, &temp);
+    ret = binary_semaphore_post(enc->semid, 0);
+    if (ret != 0) {
+        assert(ret == 0);
+        return;
+    }
+
+    ret = binary_semaphore_post(enc->semid, 1);
+    if (ret != 0) {
+        assert(ret == 0);
+        return;
+    }
 
     PTRACE("EWLReleaseHw: HW released by PID %d\n", getpid());
-    return ;
 }
 
 /* SW/SW shared memory */
