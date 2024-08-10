@@ -14,8 +14,8 @@ jobs:
         with:
           name: ardupilot
           signingKey: '${{ secrets.CACHIX_SIGNING_KEY }}'
-      - run: nix build
+      - run: nix build .#^out,bin
       - uses: actions/upload-artifact@v4
         with:
           name: h1enc
-          path: result-bin
+          path: result*
