@@ -575,7 +575,6 @@ void PicQuantLimit(vp8RateControl_s * rc)
 ------------------------------------------------------------------------------*/
 i32 VP8Calculate(i32 a, i32 b, i32 c)
 {
-#if 0
     u32 left = 32;
     u32 right = 0;
     u32 shift;
@@ -637,9 +636,6 @@ i32 VP8Calculate(i32 a, i32 b, i32 c)
         shift = left - right;
         return (i32)((((u32)a << shift) / (u32)c * (u32)b) >> shift) * sign;
     }
-#else
-	return (i32)((i64)a* b/c);
-#endif
 }
 
 /*------------------------------------------------------------------------------

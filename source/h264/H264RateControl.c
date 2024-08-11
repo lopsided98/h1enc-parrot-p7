@@ -467,6 +467,7 @@ static i32 VirtualBuffer(h264VirtualBuffer_s *vb, i32 timeInc, true_e hrd)
      * when bitPerPic is rounded to integer. */
     vb->virtualBitCnt = H264Calculate(vb->bitRate, vb->picTimeInc,
                                       vb->timeScale);
+
     if (hrd) {
 #if RC_CBR_HRD
         /* In CBR mode, bucket _must not_ underflow. Insert filler when
@@ -654,8 +655,8 @@ i32 H264AfterPicRc(h264RateControl_s * rc, u32 nonZeroCnt, u32 byteCnt,
         rc->gBufferMax = vb->bucketFullness;
     }
     DBG(1, (DBGOUTPUT, "\nLeaky Bucket Min: %i (%d%%)  Max: %i (%d%%)\n", 
-          rc->gBufferMin, (i32)((i64)rc->gBufferMin* 100/vb->bufferSize),
-          rc->gBufferMax, (i32)((i64)rc->gBufferMax* 100/vb->bufferSize)));
+          rc->gBufferMin, H264Calculate(rc->gBufferMin, 100, vb->bufferSize),
+          rc->gBufferMax, H264Calculate(rc->gBufferMax, 100, vb->bufferSize)));
 #endif
     return tmp;
 }
@@ -937,7 +938,6 @@ void PicQuantLimit(h264RateControl_s * rc)
 ------------------------------------------------------------------------------*/
 i32 H264Calculate(i32 a, i32 b, i32 c)
 {
-#if 0
     u32 left = 32;
     u32 right = 0;
     u32 shift;
@@ -999,9 +999,6 @@ i32 H264Calculate(i32 a, i32 b, i32 c)
         shift = left - right;
         return (i32)((((u32)a << shift) / (u32)c * (u32)b) >> shift) * sign;
     }
-#else
-    return (i32)((i64)a* b/c);
-#endif
 }
 #if 1
 
@@ -1123,7 +1120,7 @@ i32 gop_avg_qp(h264RateControl_s *rc)
 static i32 new_pic_quant(linReg_s *p, i32 bits, true_e useQpDeltaLimit)
 {
     i32 tmp = 0, qp_best = p->qp_prev, qp = p->qp_prev, diff;
-    i64 diff_prev = 0, qp_prev = 0, diff_best = 0x7FFFFFFFFFLL;
+    i32 diff_prev = 0, qp_prev = 0, diff_best = 0x7FFFFFFF;
 
     DBG(1, (DBGOUTPUT, "R/cx:%6d ",bits));
 
@@ -1139,7 +1136,7 @@ static i32 new_pic_quant(linReg_s *p, i32 bits, true_e useQpDeltaLimit)
       diff = ABS(tmp - (bits << QP_FRACTIONAL_BITS));
 
       if (diff < diff_best) {
-          if (diff_best == 0x7FFFFFFFFFLL) {
+          if (diff_best == 0x7FFFFFFF) {
               diff_prev = diff;
               qp_prev   = qp;
           } else {
@@ -1275,13 +1272,12 @@ static void update_model(linReg_s *p)
             a1 = (p->a1 * 2) / 3;
         }
     } else {
-        //a1 = H264Calculate(a1, DSCY, a2);
-        a1 = a1 *  DSCY / a2;
+        a1 = H264Calculate(a1, DSCY, a2);
     }
 
     /* Value of a1 shouldn't be excessive (small) */
-    a1 = MAX(a1, -262144LL*256*256);
-    a1 = MIN(a1,  262143LL*256*256);
+    a1 = MAX(a1, -262144);
+    a1 = MIN(a1,  262143);
     a1 = MAX(a1, -I64_MAX/q_step[510]/RC_TABLE_LENGTH);
     a1 = MIN(a1,  I64_MAX/q_step[510]/RC_TABLE_LENGTH);
 
