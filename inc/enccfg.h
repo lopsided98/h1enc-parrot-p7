@@ -102,7 +102,7 @@
  * This defines the 32-bit endianess of the ASIC input RGB16
  * 1 = 64-bit endianess */
 #ifndef ENCH1_INPUT_SWAP_32_RGB16
-#define ENCH1_INPUT_SWAP_32_RGB16                 1
+#define ENCH1_INPUT_SWAP_32_RGB16                 0
 #endif
 
 /* The input image's 16-bit swap: 0 or 1
@@ -123,7 +123,7 @@
  * This defines the 32-bit endianess of the ASIC input RGB32
  * 1 = 64-bit endianess */
 #ifndef ENCH1_INPUT_SWAP_32_RGB32
-#define ENCH1_INPUT_SWAP_32_RGB32                 1
+#define ENCH1_INPUT_SWAP_32_RGB32                 0
 #endif
 
 /* The input image's 16-bit swap: 0 or 1
@@ -183,7 +183,7 @@
  * output stream swapping. Typically these should be the same values
  * as for output stream. */
 #ifndef ENCH1_MV_OUTPUT_SWAP_32
-#define ENCH1_MV_OUTPUT_SWAP_32                     0 //ENCH1_OUTPUT_SWAP_32
+#define ENCH1_MV_OUTPUT_SWAP_32                     ENCH1_OUTPUT_SWAP_32
 #endif
 #ifndef ENCH1_MV_OUTPUT_SWAP_16
 #define ENCH1_MV_OUTPUT_SWAP_16                     ENCH1_OUTPUT_SWAP_16
@@ -225,7 +225,7 @@
 /* 0 - enable INCR type bursts                                                */
 /* 1 - disable INCR type and use SINGLE instead                               */
 #ifndef ENCH1_BURST_INCR_TYPE_ENABLED
-#define ENCH1_BURST_INCR_TYPE_ENABLED                    1
+#define ENCH1_BURST_INCR_TYPE_ENABLED                    0
 #endif
 
 /* Data discard mode. When enabled read bursts of length 2 or 3 are converted */
@@ -239,7 +239,7 @@
 
 /* AXI bus read and write ID values used by HW. 0 - 255 */
 #ifndef ENCH1_AXI_READ_ID
-#define ENCH1_AXI_READ_ID                                1
+#define ENCH1_AXI_READ_ID                                0
 #endif
 
 #define ENCH1_AXI_READ_ID_C0                              1
