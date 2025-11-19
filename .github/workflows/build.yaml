@@ -6,16 +6,16 @@ jobs:
   build:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: cachix/install-nix-action@v27
+      - uses: actions/checkout@v5
+      - uses: cachix/install-nix-action@v31
         with:
           github_access_token: '${{ secrets.GITHUB_TOKEN }}'
-      - uses: cachix/cachix-action@v15
+      - uses: cachix/cachix-action@v16
         with:
           name: ardupilot
           signingKey: '${{ secrets.CACHIX_SIGNING_KEY }}'
       - run: nix build .#^out,bin
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v5
         with:
           name: h1enc
           path: result*
