@@ -66,7 +66,7 @@ typedef size_t ptr_t;
 #define PRT_PTR "x"
 #endif
 
-#ifndef __cplusplus
+#if !defined(__cplusplus) && (__STDC_VERSION__ < 202311L)
 typedef enum {
         false   = 0,
         true    = 1
